@@ -1,82 +1,79 @@
 # Automatic Number Plate Recognition
 
-Repositori ini berisi implementasi model object detection YOLO v7 Tiny dan Easy OCR untuk sistem deteksi plat nomor kendaraan otomatis.
+Fork ini mengembangkan proyek ANPR berbasis YOLOv7 Tiny dan EasyOCR dengan alur penggunaan **unggah foto kendaraan**, bukan webcam.
 
-## Technical Aspect
-![Flowchart](https://github.com/daffatm/plate-detection/blob/main/asset/Scheme.jpg)
+## Cara kerja
 
-Untuk penerapannya pada *Real-world scenario* maka semua model yang digunakan adalah model dengan *low power consumption* atau *lightweight model* sehingga diharapkan sistem ini dapat berjalan pada *edge devices*.
+1. Model YOLOv7 Tiny mendeteksi lokasi plat nomor.
+2. Area plat dipotong dan diproses dengan Real-Time Super Resolution.
+3. EasyOCR membaca karakter pada plat.
+4. Aplikasi menampilkan gambar hasil deteksi dan teks plat yang terbaca.
 
-- **Plate Detection** model di training dengan model pretrain [YOLO v7 Tiny](https://github.com/WongKinYiu/yolov7)  pada dataset pribadi. Alasan digunakannya YOLO v7 Tiny dibandingkan dengan YOLO terbaru seperti v8 atau v9 sebenarnya adalah refrensi pribadi, karna YOLO v7 memiliki repositori terpisah dari Ultralytics sehingga untuk modifikasi kode lebih mudah karna memiliki standalone code serta YOLO v7 juga masih memiliki accuracy dan speed trade off yang baik jika dibandingkan dengan YOLO terbaru.
+## Model dan training
 
-- **Optical Character Recognition (OCR)** model yang digunakan adalah [Easy OCR](https://github.com/JaidedAI/EasyOCR) tanpa melakukan retrain karna tidak adanya data untuk training serta model yang dimiliki Easy OCR sudah cukup baik. Pemilihan model OCR didasarkan pada artikel https://blog.roboflow.com/best-ocr-models-text-recognition/ dimana didapatkan Easy OCR memiliki accuracy dan speed yang cukup baik pada deteksi plat nomor serta low cost.
+Model deteksi yang digunakan aplikasi berada di `model/best.onnx`. Notebook training dan data preparation asli tetap tersedia di folder `notebook/`.
 
-- **Super Resolution** model juga digunakan pada projek ini untuk melakukan enhance pada gambar plat nomor setelah di crop agar memiliki hasil yang lebih baik untuk OCR. Untuk super resolution model digunakan pretrain dari repositori [Real TIme Super Resolution](https://github.com/braindotai/Real-Time-Super-Resolution) dengan alasan model ini ringan dan dapat berjalan dengan baik pada CPU.
+Jika ingin melatih model dengan dataset sendiri, ikuti notebook:
+- `notebook/(1) Data Preparation_ Plate Detection.ipynb`
+- `notebook/(2) Training YOLOv7 Tiny_ Plate Detection.ipynb`
 
-Untuk detail mengenai training dan lainnya bisa di lihat pada [notebook.](https://github.com/daffatm/plate-detection/tree/main/notebook)
+Setelah training, export model hasil training ke ONNX dan simpan/ganti file `model/best.onnx`. Pastikan model memiliki format input dan output yang sesuai dengan pipeline pada `plate_recognition.py`.
 
-## Instalation
+EasyOCR pada versi ini masih menggunakan model pretrained bahasa Inggris (alfanumerik). Training ulang OCR merupakan pekerjaan terpisah dan tidak otomatis dilakukan ketika menjalankan aplikasi.
 
-Projek ini menggunakan **python 3.8** jadi pastikan sudah menginstallnya dan ikuti langkah berikut.
+## Instalasi
 
-**Clone Project**
-```
-git clone https://github.com/daffatm/plate-detection.git
-```
-**Go to Project Dir**
-```
+Disarankan menggunakan Python 3.8 sesuai lingkungan proyek asal.
+
+```bash
+git clone https://github.com/jackyjeky/plate-detection.git
 cd plate-detection
-```
-**Install Python Virtual Environtment**
-```
-pip install virtualenv
-```
-**Create Virtual Environtment**
-```
 python -m venv venv
 ```
-**Activate Virtual Environtment**
+
+Aktifkan virtual environment:
+
+Windows:
+```bash
+venv\\Scripts\\activate
 ```
-source venv/Scripts/activate
+
+Linux/macOS:
+```bash
+source venv/bin/activate
 ```
-**Install Requirements**
-```
+
+Install dependensi:
+
+```bash
 pip install -r requirements.txt
 ```
 
-## Usage
+## Menjalankan aplikasi
 
-```
-use webcam: 
-	python main.py --source "webcam" --threshold 0.55 --cuda
-
-image inference: 
-	python main.py --source "./img/Cars1.png" --threshold 0.55
-
-## Automatic Number Plate Recognition ##
-optional arguments:
-	--source		webcam or image_path.
-	--model			plate detection model path (.onnx)
-	--threshold		plate detection model threshold
-	--cuda			use CUDA/GPU
+```bash
+streamlit run app.py
 ```
 
-## Performance
-**Plate Detection (YOLO v7 Tiny)**
-Model pytorch telah dikonversi menjadi ONNX (Open Neural Network Exchange) agar dpat berjalan lebih baik pada CPU menggunakan onnxruntime dan mudah untuk dikonversi ke framework deep learning lain.
+Buka alamat lokal yang ditampilkan Streamlit, unggah foto JPG/PNG, lalu tekan **Deteksi plat nomor**.
 
-|  Model| Image Size | Precision | Recall | mAP@.5 | mAP@.5:.95 | Model Size |
-|--|--|--|--|--|--|--|
-|[best.onnx](https://github.com/daffatm/plate-detection/blob/main/model/best.onnx) | 640 | 0.891 | 0.891 | 0.931 | 0.555 | 23.5 MB |
+Secara default aplikasi menggunakan CPU. Aktifkan opsi CUDA di sidebar hanya jika ONNX Runtime GPU dan TensorFlow GPU sudah dikonfigurasi dengan benar.
 
-*Note: tested on private dataset*
+## Menjalankan inferensi melalui CLI (opsional)
 
-> Untuk Performa model OCR, karna data uji yang cukup beragam maka terkadang hasil OCR tidak terlalu baik dan sering terjadi salah deteksi untuk karakter 2 dan Z, 0 dan O, 1 dan I. Maka untuk melakukan improvement perlu dilakukan retrain terhadap data plat nomor dengan keseragaman terutama di bagian format tata letak huruf dan font yang digunakan. Keseragaman data ini juga dapat membuat proses praprocessing gambar sebelum OCR bekerja dengan lebih baik lagi.
+Mode CLI asli tetap tersedia:
 
-## Result
-Inference Result:
-![Inference Result](https://github.com/daffatm/plate-detection/blob/main/asset/Result.png)
+```bash
+python main.py --source "./img/Cars1.png" --threshold 0.55
+```
 
-Webcam Result:
-![Realtime Result](https://github.com/daffatm/plate-detection/blob/main/asset/Realtime%20Result.png)
-*Note: run on very low power cpu AMD A9-9420 Dual Core*
+## Catatan dan batasan
+
+- Hasil OCR bergantung pada resolusi, sudut, pencahayaan, dan kualitas foto.
+- Model deteksi yang disertakan adalah model pretrained dari repositori asal, bukan model yang otomatis dilatih ulang.
+- Dataset dan hasil training perlu dievaluasi sebelum digunakan untuk kebutuhan nyata.
+- Sistem saat ini mengembalikan satu teks plat dari pemrosesan gambar; dukungan multi-plat dalam satu foto dapat ditingkatkan pada tahap berikutnya.
+
+## Kredit
+
+Berdasarkan proyek asli [daffatm/plate-detection](https://github.com/daffatm/plate-detection). Model deteksi menggunakan [YOLOv7](https://github.com/WongKinYiu/yolov7), OCR menggunakan [EasyOCR](https://github.com/JaidedAI/EasyOCR), dan super-resolution menggunakan [Real-Time Super-Resolution](https://github.com/braindotai/Real-Time-Super-Resolution).
