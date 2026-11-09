@@ -8,3 +8,4 @@ onnxruntime-gpu
 tensorflow>=2.4.1
 matplotlib
 easyocr
+streamlit
